@@ -33,7 +33,7 @@ Parking Floors
     - floorId
     - spots : List<ParkingSpot>
     -------------------------
-    +findFreeSpot(vehicleType)
+    +findAvailableSpot(vehicleType)
 
         |
         V
@@ -58,9 +58,8 @@ Vehicle
 ---------------------
 ParkingTicket
 - ticketId
-- entryTime
-- exitTime
-- parkingSpot
+- vehicle
+- spot
 ---------------------
 
 
@@ -149,16 +148,6 @@ class ParkingFloor {
         this.floorId = floorId;
         this.spots = spots;
     }
-
-    public ParkingSpot findFreeSpot(Type vehicleType) {
-        for(ParkingSpot spot: spots) {
-            if(spot.isFree() && spot.canFit(vehicleType)) {
-                return spot;
-            }
-        }
-        return null;
-    }
-
 }
 
 interface ParkingStrategy {
@@ -170,9 +159,10 @@ class StandardUserStrategy implements ParkingStrategy {
     @Override
     public ParkingSpot findSpot(List<ParkingFloor> floors, Vehicle v) {
         for(ParkingFloor floor: floors) {
-            ParkingSpot spot = floor.findFreeSpot(v.vehicleType);
-            if (spot != null) {
-                return spot;
+            for(ParkingSpot spot: floor.spots) {
+                if(spot.isFree() && spot.canFit(v.vehicleType)) {
+                    return spot;
+                }
             }
         }
         return null;
@@ -187,9 +177,10 @@ class PremiumUserStrategy implements ParkingStrategy {
         for(ParkingFloor floor: floors) {
             // Try ground floor first
             if(floor.floorId == 0) {
-                ParkingSpot spot = floor.findFreeSpot(v.vehicleType);
-                if (spot != null) {
-                    return spot;
+                for(ParkingSpot spot: floor.spots) {
+                    if(spot.isFree() && spot.canFit(v.vehicleType)) {
+                        return spot;
+                    }
                 }
             }
 
@@ -197,9 +188,10 @@ class PremiumUserStrategy implements ParkingStrategy {
         for(ParkingFloor floor: floors) {
             // Try remaining floors
             if(floor.floorId != 0) {
-                ParkingSpot spot = floor.findFreeSpot(v.vehicleType);
-                if (spot != null) {
-                    return spot;
+                for(ParkingSpot spot: floor.spots) {
+                    if(spot.isFree() && spot.canFit(v.vehicleType)) {
+                        return spot;
+                    }
                 }
             }
 
