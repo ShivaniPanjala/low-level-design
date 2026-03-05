@@ -1,4 +1,16 @@
 /*
+Chess Game requirement:
+1. The chess game should follow the standard rules of chess.
+2. The game should support two players, each controlling their own set of pieces.
+3. The game board should be represented as an 8x8 grid, with alternating black and white squares.
+4. Each player should have 16 pieces: 1 king, 1 queen, 2 rooks, 2 bishops, 2 knights, and 8 pawns.
+5. The game should validate legal moves for each piece and prevent illegal moves.
+6. The game should detect checkmate and stalemate conditions.
+7. The game should handle player turns and allow players to make moves alternately.
+8. The game should provide a user interface for players to interact with the game.
+ */
+
+/*
 Game
   ↓
 Board
@@ -80,18 +92,39 @@ enum PieceType {
     KING,
     PAWN
 }
+class MoveValidator{
+    public void isValid(Board board, Move move, Colour colour) {
 
+    }
+}
+class Player {
+    Colour colour;
+
+    Player(Colour colour) {
+        this.colour = colour;
+    }
+}
 class Game {
-    private final Board board = Board.getInstance();
-    private Colour currentTurn = Colour.WHITE;
+    private final Board board;
+    private Colour currentTurn;
+    MoveValidator moveValidator;
+    Player player1;
+    Player player2;
+    Game(Player player1, Player player2) {
+        this.board = Board.getInstance();
+        currentTurn = Colour.WHITE;
+        moveValidator = new MoveValidator();
+        this.player1 = player1;
+        this.player2 = player2;
+    }
 
     void start() {;
         board.initialize();
     }
 
-    void makeMove(int startRow, int startCol, int endRow, int endCol) {
-        Cell start = board.getCell(startRow, startCol);
-        Cell end = board.getCell(endRow, endCol);
+    void makeMove(Move move) {
+        Cell start = board.getCell(move.fr, move.fc);
+        Cell end = board.getCell(move.tr, move.tc);
 
         Piece piece = start.getPiece();
 
@@ -110,7 +143,7 @@ class Game {
             return;
         }
 
-        if (!piece.isValidMove(board, start, end)) {
+        if (!piece.canMove(board, move)) {
             System.out.println("Invalid move");
             return;
         }
@@ -185,17 +218,17 @@ class PieceFactory {
     public static Piece createPiece(PieceType type, Colour colour) {
         switch(type) {
             case PieceType.ROOK:
-                return new Rook(colour);
+                return new Rook(colour, new RookStrategy());
             case PieceType.KNIGHT:
-                return new Knight(colour);
+                return new Knight(colour, new KnightStrategy());
             case PieceType.BISHOP:
-                return new Bishop(colour);
+                return new Bishop(colour, new BishopStrategy());
             case PieceType.QUEEN:
-                return new Queen(colour);
+                return new Queen(colour, new QueenStrategy());
             case PieceType.KING:
-                return new King(colour);
+                return new King(colour, new KingStrategy());
             case PieceType.PAWN:
-                return new Pawn(colour);
+                return new Pawn(colour, new PawnStrategy());
             default:
                 throw new IllegalArgumentException("Invalid piece type");
         }
@@ -219,104 +252,138 @@ class Cell {
         return piece;
     }
 
-    int getRow() {
-        return row;
+    public boolean isOccupied() {
+        return piece != null;
     }
-    int getCol() {
-        return col;
+}
+
+interface MoveStrategy {
+    boolean isValidMove(Board board, Move move, Colour colour);
+}
+
+class RookStrategy implements MoveStrategy {
+    @Override
+    public boolean isValidMove(Board board, Move move, Colour colour) {
+        return false;
+    }
+//    Rook(Colour colour, ) {
+//        super(colour);
+//    }
+
+//    @Override
+//    boolean isValidMove(Board board, Move move, Colour colour) {
+////        return move.getRow() == end.getRow() || start.getCol() == end.getCol();
+//        return false;
+//    }
+}
+class KnightStrategy implements MoveStrategy {
+    @Override
+    public boolean isValidMove(Board board, Move move, Colour colour) {
+        return false;
+    }
+
+}
+class BishopStrategy implements MoveStrategy {
+    @Override
+    public boolean isValidMove(Board board, Move move, Colour colour) {
+        return false;
+    }
+}
+class QueenStrategy implements MoveStrategy {
+
+    @Override
+    public boolean isValidMove(Board board, Move move, Colour colour) {
+        return false;
+    }
+}
+class KingStrategy implements MoveStrategy {
+
+    @Override
+    public boolean isValidMove(Board board, Move move, Colour colour) {
+        return false;
+    }
+}
+class PawnStrategy implements MoveStrategy {
+    @Override
+    public boolean isValidMove(Board board, Move move, Colour colour) {
+        return false;
     }
 }
 
 abstract class Piece {
     protected Colour colour;
+    PieceType type;
+    MoveStrategy moveStrategy;
 
-    Piece(Colour colour) {
+
+    Piece(Colour colour, PieceType type, MoveStrategy moveStrategy) {
         this.colour = colour;
+        this.type = type;
+        this.moveStrategy = moveStrategy;
     }
 
     Colour getColour() {
         return colour;
     }
 
-    abstract boolean isValidMove(Board board, Cell start, Cell end) ;
+    public boolean canMove(Board board, Move move) {
+        return moveStrategy.isValidMove(board, move, colour);
+    }
 }
 
 class Rook extends Piece {
-    Rook(Colour colour) {
-        super(colour);
-    }
-
-    @Override
-    boolean isValidMove(Board board, Cell start, Cell end) {
-        return start.getRow() == end.getRow() || start.getCol() == end.getCol();
+    Rook(Colour colour, MoveStrategy moveStrategy) {
+        super(colour, PieceType.ROOK, moveStrategy);
     }
 }
-
 class Knight extends Piece {
-    Knight(Colour colour) {
-        super(colour);
-    }
-
-    @Override
-    boolean isValidMove(Board board, Cell start, Cell end) {
-//        write logic
-        return false;
+    Knight(Colour colour, MoveStrategy moveStrategy) {
+        super(colour, PieceType.KNIGHT, moveStrategy);
     }
 }
-
 class Bishop extends Piece {
-    Bishop(Colour colour) {
-        super(colour);
-    }
-
-    @Override
-    boolean isValidMove(Board board, Cell start, Cell end) {
-//        write logic
-        return false;
+    Bishop(Colour colour, MoveStrategy moveStrategy) {
+        super(colour, PieceType.BISHOP, moveStrategy);
     }
 }
-
 class Queen extends Piece {
-    Queen(Colour colour) {
-        super(colour);
-    }
-
-    @Override
-    boolean isValidMove(Board board, Cell start, Cell end) {
-//        write logic
-        return false;
+    Queen(Colour colour, MoveStrategy moveStrategy) {
+        super(colour, PieceType.QUEEN, moveStrategy);
     }
 }
-
 class King extends Piece {
-    King(Colour colour) {
-        super(colour);
-    }
-
-    @Override
-    boolean isValidMove(Board board, Cell start, Cell end) {
-//        write logic
-        return false;
+    King(Colour colour, MoveStrategy moveStrategy) {
+        super(colour, PieceType.KING, moveStrategy);
     }
 }
-
 class Pawn extends Piece {
-    Pawn(Colour colour) {
-        super(colour);
-    }
-
-    @Override
-    boolean isValidMove(Board board, Cell start, Cell end) {
-//        write logic
-        return false;
+    Pawn(Colour colour, MoveStrategy moveStrategy) {
+        super(colour, PieceType.PAWN, moveStrategy);
     }
 }
 
+class Move{
+    int fr;
+    int fc;
+    int tr;
+    int tc;
+
+    Move(int fr, int fc, int tr, int tc) {
+        this.fr = fr;
+        this.fc = fc;
+        this.tr = tr;
+        this.tc = tc;
+    }
+}
 
 public class ChessGame {
     public static void main(String[] args) {
-        Game game = new Game();
+        Player player1 = new Player(Colour.WHITE);
+        Player player2 = new Player(Colour.BLACK);
+        Game game = new Game(player1, player2);
         game.start();
-        game.makeMove(6, 0, 5, 0);
+        Move move = new Move(6, 0, 5, 0);
+        game.makeMove(move);
     }
 }
+
