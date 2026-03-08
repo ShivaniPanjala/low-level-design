@@ -155,12 +155,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/* ---------------- STATE TYPES ---------------- */
 enum StateType {
     IDLE,
     HAS_MONEY,
     DISPENSE
 }
 
+/* ---------------- STATE REGISTRY (CACHE) ---------------- */
 class StateRegistry {
     private static Map<StateType, VendingState> cache = new HashMap<>();
 
@@ -175,6 +177,7 @@ class StateRegistry {
     }
 }
 
+/* ---------------- DENOMINATIONS ---------------- */
 enum Denomination {
     TEN(10),
     FIVE(5),
@@ -192,6 +195,7 @@ enum Denomination {
     }
 }
 
+/* ---------------- CASH REGISTRY ---------------- */
 class CashRegistry{
     Map<Denomination, Integer> cashMap = new HashMap<>();
 
@@ -206,8 +210,13 @@ class CashRegistry{
     public int getAvailable(Denomination d) {
         return cashMap.getOrDefault(d, 0);
     }
+
+    public void printCash(){
+        System.out.println("Cash in machine: " + cashMap);
+    }
 }
 
+/* ---------------- VENDING MACHINE ---------------- */
 class VendingMachine {
     Inventory inventory;
     double balance;
@@ -227,8 +236,8 @@ class VendingMachine {
         this.currentState = state;
     }
 
-    public void insertMoney(double amount) {
-        currentState.insertMoney(this, amount);
+    public void insertMoney(Denomination d, int count) {
+        currentState.insertMoney(this, d, count);
     }
 
     public void selectItem(String slotId) {
@@ -238,10 +247,9 @@ class VendingMachine {
     public void dispenseItem() {
         currentState.dispenseItem(this);
     }
-
-
 }
 
+/* ---------------- INVENTORY ---------------- */
 class Inventory {
     Map<String, ItemSlot> itemSlots = new HashMap<>();
 
@@ -260,6 +268,7 @@ class Inventory {
 
 }
 
+/* ---------------- ITEM SLOT ---------------- */
 class ItemSlot {
     String slotId;
     Item item;
@@ -290,6 +299,7 @@ class ItemSlot {
 
 }
 
+/* ---------------- ITEM ---------------- */
 class Item {
     String itemName;
     double price;
@@ -308,17 +318,21 @@ class Item {
 
 }
 
+/* ---------------- STATE INTERFACE ---------------- */
 interface VendingState {
-    void insertMoney(VendingMachine vm, double amount);
+    void insertMoney(VendingMachine vm, Denomination d,  int  count);
     void selectItem(VendingMachine vm, String slotId);
     void dispenseItem(VendingMachine vm);
 }
 
+
+/* ---------------- IDLE STATE ---------------- */
 class IdleState implements VendingState {
     @Override
-    public void insertMoney(VendingMachine vm, double amount) {
-        vm.balance += amount;
-        System.out.println("Money inserted: " + amount);
+    public void insertMoney(VendingMachine vm, Denomination d,  int  count) {
+        vm.cashRegistry.add(d, count);
+        vm.balance += d.getValue() * count;
+        System.out.println("Inserted: "+ d +" x "+count);
 
         vm.setState(StateRegistry.getState(StateType.HAS_MONEY));
     }
@@ -336,9 +350,10 @@ class IdleState implements VendingState {
 }
 class HasMoneyState implements VendingState {
     @Override
-    public void insertMoney(VendingMachine vm, double amount) {
-        vm.balance += amount;
-        System.out.println("Money inserted: " + amount);
+    public void insertMoney(VendingMachine vm, Denomination d,  int  count) {
+        vm.cashRegistry.add(d, count);
+        vm.balance += d.getValue()*count;
+        System.out.println("Added more money");
     }
 
     @Override
@@ -366,9 +381,11 @@ class HasMoneyState implements VendingState {
         System.out.println("Select item first");
     }
 }
+
+/* ---------------- DISPENSING STATE ---------------- */
 class DispensingState implements VendingState {
     @Override
-    public void insertMoney(VendingMachine vm, double amount) {
+    public void insertMoney(VendingMachine vm, Denomination d,  int  count) {
         System.out.println("Please wait, dispensing item");
     }
 
@@ -388,22 +405,51 @@ class DispensingState implements VendingState {
 
         if(vm.balance > 0){
             System.out.println("Returning change: " + vm.balance);
-            vm.balance = 0;
+            returnChange(vm);
         }
 
         vm.selectedSlot = null;
         vm.setState(StateRegistry.getState(StateType.IDLE));
+    }
+
+    private void returnChange(VendingMachine vm){
+
+        double change = vm.balance;
+
+        System.out.println("Returning change: "+ change);
+
+        for(Denomination d : Denomination.values()){
+
+            int value = d.getValue();
+
+            int needed = (int)(change/value);
+
+            int available = vm.cashRegistry.getAvailable(d);
+
+            int toGive = Math.min(needed,available);
+
+            if(toGive > 0){
+
+                vm.cashRegistry.remove(d,toGive);
+
+                change -= toGive*value;
+
+                System.out.println("Returned "+d+" x "+toGive);
+            }
+        }
+
+        vm.balance = 0;
     }
 }
 
 class Main {
     public static void main(String[] args) {
         VendingMachine machine = new VendingMachine();
-        machine.inventory.addItem("c1", new Item("coke", 20), 20);
-        machine.inventory.addItem("c2",new Item( "Pepsi", 30), 5);
+        machine.inventory.addItem("A1", new Item("coke", 20), 20);
+        machine.inventory.addItem("A2",new Item( "Pepsi", 30), 5);
 
-        machine.insertMoney(20.78);
-        machine.selectItem("c1");
+        machine.insertMoney(Denomination.TEN, 3);
+        machine.selectItem("A1");
         machine.dispenseItem();
 
     }
