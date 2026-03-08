@@ -110,6 +110,20 @@ Game
               ├── KingStrategy
               └── PawnStrategy
  */
+/*
+Time Complexity of Check Detection
+
+8x8 board
+for each piece
+try moves
+
+Worst case:
+O(64 × 64)
+≈ O(4096)
+
+Which is perfectly fine for chess.
+ */
+
 
 
 
@@ -326,7 +340,7 @@ class Board {
     private static Board instance; // single obj
     private final Cell[][] cell = new Cell[8][8];
 
-    public static Board getInstance() {
+    public static synchronized Board getInstance() {
         if(instance == null) {
             instance = new Board(); // singleton object
         }
@@ -383,17 +397,17 @@ class Board {
 class PieceFactory {
     public static Piece createPiece(PieceType type, Colour colour) {
         switch(type) {
-            case PieceType.ROOK:
+            case ROOK:
                 return new Rook(colour, new RookStrategy());
-            case PieceType.KNIGHT:
+            case KNIGHT:
                 return new Knight(colour, new KnightStrategy());
-            case PieceType.BISHOP:
+            case BISHOP:
                 return new Bishop(colour, new BishopStrategy());
-            case PieceType.QUEEN:
+            case QUEEN:
                 return new Queen(colour, new QueenStrategy());
-            case PieceType.KING:
+            case KING:
                 return new King(colour, new KingStrategy());
-            case PieceType.PAWN:
+            case PAWN:
                 return new Pawn(colour, new PawnStrategy());
             default:
                 throw new IllegalArgumentException("Invalid piece type");
@@ -496,11 +510,10 @@ class BishopStrategy implements MoveStrategy {
 /* ---------------- QUEEN ---------------- */
 
 class QueenStrategy implements MoveStrategy {
+    private final RookStrategy rook = new RookStrategy();
+    private final BishopStrategy bishop = new BishopStrategy();
 
     public boolean isValidMove(Board board, Move move, Colour colour) {
-
-        RookStrategy rook = new RookStrategy();
-        BishopStrategy bishop = new BishopStrategy();
 
         return rook.isValidMove(board, move, colour) ||
                 bishop.isValidMove(board, move, colour);
@@ -660,3 +673,31 @@ public class ChessGame {
     }
 }
 
+/*
+How checkmate works in your design?
+
+1. After every move -> updateGameStatus()
+
+2. Check if king is under attack
+   -> isCheck()
+
+3. If king is under attack AND
+   player has no legal moves
+   -> CHECKMATE
+
+4. If king not in check AND
+   player has no legal moves
+   -> STALEMATE
+ */
+
+/*
+Why did you choose Strategy Pattern for movement?
+
+Each chess piece has different movement rules.
+Instead of putting many if-else conditions in Piece class,
+we encapsulated movement behavior in separate strategy classes.
+
+This follows:
+- Open Closed Principle
+- Single Responsibility Principle
+ */
