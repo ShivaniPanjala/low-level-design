@@ -258,14 +258,6 @@ class Inventory {
         return slot != null && slot.isAvailable();
     }
 
-
-    public void updateQuantity(String slotId) {
-        ItemSlot slot = getSlot(slotId);
-        if(slot != null){
-            slot.dispenseItem();
-        }
-    }
-
 }
 
 class ItemSlot {
