@@ -51,9 +51,6 @@ VendingMachine
      |--- currentState
 
 
-
-interface PaymentStrategy{}
-
 enum StateType {
 IDLE,
 HAS_MONEY,
@@ -348,6 +345,7 @@ class IdleState implements VendingState {
         System.out.println("No money inserted");
     }
 }
+/* ---------------- HAS MONEY STATE ---------------- */
 class HasMoneyState implements VendingState {
     @Override
     public void insertMoney(VendingMachine vm, Denomination d,  int  count) {
@@ -499,6 +497,7 @@ HasMoneyState implements VendingState
 DispenseState implements VendingState
 
 
+
 VendingMachine
 ---------------------
 - Inventory inventory;
@@ -537,4 +536,205 @@ Item
 + getPrice()
 + getItemName()
 
+*/
+
+/*
+============================================================
+FOLLOW UP QUESTIONS (LLD INTERVIEW EXTENSIONS)
+============================================================
+
+1️⃣ CANCEL TRANSACTION
+------------------------------------------------------------
+
+Problem:
+User inserts money but decides to cancel before buying.
+
+Expected Behavior:
+Machine should return the full balance and reset state.
+
+Implementation:
+Add a method in VendingMachine.
+
+public void cancelTransaction() {
+
+    System.out.println("Transaction cancelled. Returning: " + balance);
+
+    balance = 0;
+
+    selectedSlot = null;
+
+    setState(StateRegistry.getState(StateType.IDLE));
+}
+
+Example flow:
+
+insertMoney(20)
+selectItem("A1")
+cancelTransaction()
+
+Output:
+Transaction cancelled. Returning: 20
+
+
+
+2️⃣ MULTIPLE PAYMENT METHODS
+------------------------------------------------------------
+
+Problem:
+Machine should support different payment methods.
+
+Examples:
+- Cash
+- Card
+- UPI
+- Wallet
+
+Solution:
+Use Strategy Pattern.
+
+interface PaymentStrategy {
+    void pay(double amount);
+}
+
+class CashPayment implements PaymentStrategy {
+    public void pay(double amount) {
+        System.out.println("Paid using cash: " + amount);
+    }
+}
+
+class CardPayment implements PaymentStrategy {
+    public void pay(double amount) {
+        System.out.println("Paid using card: " + amount);
+    }
+}
+
+class UpiPayment implements PaymentStrategy {
+    public void pay(double amount) {
+        System.out.println("Paid using UPI: " + amount);
+    }
+}
+
+VendingMachine can use:
+
+PaymentStrategy paymentStrategy;
+
+
+
+3️⃣ OUT OF CHANGE SITUATION
+------------------------------------------------------------
+
+Problem:
+Machine does not have enough coins to return change.
+
+Example:
+
+Item price = 17
+User inserted = 20
+Change required = 3
+
+Machine coins:
+
+TEN = 0
+FIVE = 0
+TWO = 1
+ONE = 0
+
+Machine cannot return 3.
+
+Expected Behavior:
+Cancel the transaction and return the full money.
+
+
+
+FLOW WITH THIS FEATURE
+------------------------------------------------------------
+
+User inserts money
+        ↓
+User selects item
+        ↓
+Machine checks if change can be returned
+
+IF FALSE
+    → Cancel transaction
+    → Return full money
+
+IF TRUE
+    → Dispense item
+    → Return change
+
+
+
+4️⃣ ADD METHOD IN CashRegistry
+------------------------------------------------------------
+
+Check if machine can return change using available coins.
+
+class CashRegistry {
+
+    public boolean canReturnChange(double change){
+
+        for(Denomination d : Denomination.values()){
+
+            int value = d.getValue();
+
+            int needed = (int)(change / value);
+
+            int available = getAvailable(d);
+
+            int used = Math.min(needed, available);
+
+            change -= used * value;
+        }
+
+        return change == 0;
+    }
+}
+
+
+
+5️⃣ USE THIS CHECK BEFORE DISPENSING ITEM
+------------------------------------------------------------
+
+Inside DispensingState.dispenseItem()
+
+class DispensingState implements VendingState {
+
+    public void dispenseItem(VendingMachine vm){
+
+        Item item = vm.selectedSlot.getItem();
+
+        double price = item.getPrice();
+
+        double changeRequired = vm.balance - price;
+
+        // Check if machine can provide change
+        if(changeRequired > 0 &&
+           !vm.cashRegistry.canReturnChange(changeRequired)){
+
+            System.out.println("Machine cannot return change.");
+
+            System.out.println("Cancelling transaction.");
+
+            System.out.println("Returning money: " + vm.balance);
+
+            vm.balance = 0;
+
+            vm.selectedSlot = null;
+
+            vm.setState(StateRegistry.getState(StateType.IDLE));
+
+            return;
+        }
+
+        // Continue normal flow
+        Item dispensed = vm.selectedSlot.dispenseItem();
+
+        vm.balance -= dispensed.getPrice();
+
+        System.out.println("Item dispensed: " + dispensed.getItemName());
+    }
+}
+
+============================================================
 */
