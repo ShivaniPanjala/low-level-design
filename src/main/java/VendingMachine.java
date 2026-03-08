@@ -115,9 +115,8 @@ ItemSlot
 
 Item
 -------------
-- string name
+- string ItemName
 - double price
-- string itemCode
 ----------------------
 + getPrice()
 + getName()
@@ -176,7 +175,7 @@ class StateRegistry {
     }
 }
 
-enum Denominations {
+enum Denomination {
     TEN(10),
     FIVE(5),
     TWO(2),
@@ -194,17 +193,17 @@ enum Denominations {
 }
 
 class CashRegistry{
-    Map<Denominations, Integer> cashMap = new HashMap<>();
+    Map<Denomination, Integer> cashMap = new HashMap<>();
 
-    public void add(Denominations d, int count ) {
+    public void add(Denomination d, int count ) {
         cashMap.put(d, cashMap.getOrDefault(d, 0) + count);
     }
 
-    public void remove(Denominations d, int count) {
+    public void remove(Denomination d, int count) {
         cashMap.put(d, cashMap.get(d) - count);
     }
 
-    public int getAvailable(Denominations d) {
+    public int getAvailable(Denomination d) {
         return cashMap.getOrDefault(d, 0);
     }
 }
@@ -212,8 +211,10 @@ class CashRegistry{
 class VendingMachine {
     Inventory inventory;
     double balance;
-    VendingState currentState;
+    ItemSlot selectedSlot;
     CashRegistry cashRegistry;
+    VendingState currentState;
+
 
     VendingMachine() {
         this.inventory = new Inventory();
@@ -282,10 +283,11 @@ class ItemSlot {
         return quantity > 0;
     }
 
-    public void dispenseItem() {
+    public Item dispenseItem() {
         if(quantity > 0) {
             quantity--;
         }
+        return item;
     }
 
     Item getItem() {
@@ -297,12 +299,10 @@ class ItemSlot {
 }
 
 class Item {
-    String slotId;
-    String itemCode;
+    String itemName;
     double price;
-    Item(String slotId, String itemCode, double price) {
-        this.slotId = slotId;
-        this.itemCode = itemCode;
+    Item(String itemName, double price) {
+        this.itemName = itemName;
         this.price = price;
     }
 
@@ -310,8 +310,8 @@ class Item {
         return price;
     }
 
-    String getItemCode() {
-        return itemCode;
+    String getItemName() {
+        return itemName;
     }
 
 }
@@ -363,8 +363,9 @@ class HasMoneyState implements VendingState {
             return;
         }
 
-        System.out.println("Item selected: " + slot.getItem().getItemCode());
+        System.out.println("Item selected: " + slot.getItem().getItemName());
 
+        vm.selectedSlot = slot;
         vm.setState(StateRegistry.getState(StateType.DISPENSE));
     }
 
@@ -386,30 +387,28 @@ class DispensingState implements VendingState {
 
     @Override
     public void dispenseItem(VendingMachine vm) {
-        ItemSlot slot = vm.inventory.getSlot("c1");
 
-        slot.dispenseItem();
+        Item item = vm.selectedSlot.dispenseItem();
 
-        vm.balance -= slot.getItem().getPrice();
+        vm.balance -= item.getPrice();
 
-        System.out.println("Item dispensed: " + slot.getItem().getItemCode());
+        System.out.println("Item dispensed: " + item.getItemName());
 
         if(vm.balance > 0){
             System.out.println("Returning change: " + vm.balance);
             vm.balance = 0;
         }
 
+        vm.selectedSlot = null;
         vm.setState(StateRegistry.getState(StateType.IDLE));
     }
 }
 
-
-
 class Main {
     public static void main(String[] args) {
         VendingMachine machine = new VendingMachine();
-        machine.inventory.addItem("c1", new Item("c1", "coke", 20), 20);
-        machine.inventory.addItem("c2",new Item("c2", "Pepsi", 30), 5);
+        machine.inventory.addItem("c1", new Item("coke", 20), 20);
+        machine.inventory.addItem("c2",new Item( "Pepsi", 30), 5);
 
         machine.insertMoney(20.78);
         machine.selectItem("c1");
@@ -417,3 +416,87 @@ class Main {
 
     }
 }
+
+
+/*
+
+enum StateType {
+IDLE,
+HAS_MONEY
+DISPENSE
+}
+StateRegistry
+-------------------
+Map<StateType, VendingState> cache = new HashMap<>()
++ VendingState getState(StateType stateTpe)
+
+enum Denomination {
+TEN(5),
+FIVE(20),
+TWO(12),
+ONE(6);
+    private int value;
+    Denomination(int value) {
+        this.value = value
+    }
+    public int getValue() {}
+}
+
+cashRegistry
+-------------------
+- Map<Denomination, Integer> = new Hashmap<>();
++ void add(Denomination d, int count);
++ void remove(Denomination d, int count);
++ int getAvailable(Denomination d)
+
+interface VendingState
+--------------------------
++ addMoney(VendingMachine vm, double amount)
++ selectItem(VendingMachine vm, string slotId)
++ DispenseItem(VendingMachine vm)
+
+
+IdleState implements VendingState
+HasMoneyState implements VendingState
+DispenseState implements VendingState
+
+
+VendingMachine
+---------------------
+- Inventory inventory;
+- double amount;
+- CashRegistry cashRegistry;
+- ItemSlot selectedSlot
+- VendingState currentSate
+-------------------------------
++ setState()
++ addMoney(double amount);
++ selectItem(string slotId);
++ dispenseItem();
+
+Inventory
+------------
+- Map<String, ItemSlot> itemSlotMap = new HashMap<>()
++ addItem(String slotId, Item item, int quantity)
++ getSlot(String slotId)
++ isItemAvailable(String slotId)
+
+ItemSlot
+-------------
+- string SlotId
+- Item item
+- int quantity
+----------
++ isAvailable()
++ dispenseItem()
++ getItem()
+
+Item
+--------
+- string itemName
+- double Price
+--------------------
++ getPrice()
++ getItemName()
+
+*/
