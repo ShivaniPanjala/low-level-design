@@ -11,7 +11,48 @@ Functional Requirements
 uses StatePattern
 
 VendingMachine -> Inventory(Manages all Item slots) -> ItemSlot -> Item
-interface PaymentStrategy
+
+
+Idle state
+  |
+  | insert money
+  v
+HasMoney state
+  |
+  | select item
+  v
+Dispensing state
+  |
+  | done
+  v
+Idle state
+
+
+If interviewer asks why we added StateRegistry, say:
+"Since states are stateless, we cache and reuse them using a registry instead of creating new objects during every transition."
+
+                 StateRegistry
+                      |
+          ---------------------------
+          |            |           |
+       IdleState   HasMoneyState   DispenseState
+
+VendingMachine
+      |
+      | uses
+      v
+currentState  ← fetched from registry
+
+VendingMachine
+     |
+     |--- Inventory
+     |--- CashRegistry
+     |--- double amount
+     |--- currentState
+
+
+
+interface PaymentStrategy{}
 
 enum StateType {
 IDLE,
@@ -24,34 +65,29 @@ StateRegistry -> think of this like a cache which stores state objects, we creat
 - Map<StateType, VendingState> cache= new HashMap()
 + static VendingState getState(StateType type)
 
+enum Denominations{
+ TEN(value),
+ FIVE(5),
+ TWO(2),
+ ONE(1);
+ - int value
+ + int getValue();
+ }
 
-If interviewer asks why we added StateRegistry, say:
-"Since states are stateless, we cache and reuse them using a registry instead of creating new objects during every transition."
+ CashRegistry
+ ----------------------
+ - Map<Denominations, Integer> cashMap = new HashMap<>();
+ + void add(Denomination d, int count)
+ + void remove(Denomination d, int count)
+ + int getAvailable(Denominations d)
 
-                 StateRegistry
-                      |
-          ---------------------------
-          |            |           |
-       IdleState   HasMoneyState   DispenseState
-
-
-VendingMachine
-      |
-      | uses
-      v
-currentState  ← fetched from registry
-
-VendingMachine
-     |
-     |--- Inventory
-     |--- CashRegistry
-     |--- currentState
 
 VendingMachine
 -------------------
 -Inventory inventory
 - double balance
-- VendingState currentSate
+- VendingState currentSate  = StateRegistry.getState(StateType.IDLE)
+- CashRegistry cashRegistry
 -----------------------------
 + setState(vendingState state)
 + insertMoney()
@@ -82,23 +118,9 @@ Item
 - string name
 - double price
 - string itemCode
-
+----------------------
 + getPrice()
 + getName()
-
-Idle
-  |
-  | insert money
-  v
-HasMoney
-  |
-  | select item
-  v
-Dispensing
-  |
-  | done
-  v
-Idle
 
 
 interface VendingState
@@ -191,13 +213,13 @@ class VendingMachine {
     Inventory inventory;
     double balance;
     VendingState currentState;
-    CashRegistry casheRegistry;
+    CashRegistry cashRegistry;
 
     VendingMachine() {
         this.inventory = new Inventory();
         balance = 0;
         this.currentState = StateRegistry.getState(StateType.IDLE);
-        this.casheRegistry = new CashRegistry();
+        this.cashRegistry = new CashRegistry();
     }
 
     public void setState(VendingState state) {
