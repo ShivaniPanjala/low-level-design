@@ -27,7 +27,6 @@ __________
 ACTIVE
 CHECK
 CHECKMATE
-STALEMATE
 
 Color
 ----------
@@ -37,11 +36,23 @@ BLACK
 
         Game
 ----------------------------
-- Player currentPlayer
 - Board board
+- Colour currentTurn
+- player player1
+- Player player2
+- MoveValidator moveValidator;
+- GameStatus gameStatus
 ------------------------
 + start()
 + makeMove(move)
+- Colour changeTurn()
+- void updateGameStatus()
+- isCheck(Colour colour)
+- Cell findKing(Colour colour)
+- boolean isSquareUnderAttack(Cell targetCell, Colour attackedColour)
+- boolean hasLegalMove(currentTurn)
+- boolean causesCheck(Move move, Colour colour)
+
 
 
         Board <<Singleton>>
@@ -68,6 +79,36 @@ Piece piece
 King    Queen  Rook    Pawn ...
 
 
+makeMove()
+↓
+updateGameStatus()
+↓
+isCheck()
+↓
+hasAnyLegalMove()
+↓
+CHECK / CHECKMATE / STALEMATE
+
+
+*/
+
+/*
+Game
+ ├── Board (Singleton)
+ │      └── Cell[][]
+ │
+ ├── MoveValidator
+ │
+ ├── PieceFactory
+ │
+ └── Pieces
+        └── Strategy
+              ├── RookStrategy
+              ├── KnightStrategy
+              ├── BishopStrategy
+              ├── QueenStrategy
+              ├── KingStrategy
+              └── PawnStrategy
  */
 
 
@@ -76,7 +117,7 @@ enum GameStatus {
     ACTIVE,
     CHECK,
     STALEMATE,
-    CHECKMATE
+    CHECKMATE,
 }
 
 enum Colour {
@@ -108,6 +149,7 @@ class Game {
     private final Board board;
     private Colour currentTurn;
     MoveValidator moveValidator;
+    private GameStatus status;
     Player player1;
     Player player2;
     Game(Player player1, Player player2) {
@@ -116,6 +158,7 @@ class Game {
         moveValidator = new MoveValidator();
         this.player1 = player1;
         this.player2 = player2;
+        status = GameStatus.ACTIVE;
     }
 
     void start() {;
@@ -147,12 +190,128 @@ class Game {
             System.out.println("Invalid move");
             return;
         }
+        if (causesCheck(move, currentTurn)) {
+            System.out.println("Move leaves king in check");
+            return;
+        }
 
         end.setPiece(piece);
         start.setPiece(null);
         System.out.println("Move successful");
 
-        currentTurn = currentTurn == Colour.WHITE ? Colour.BLACK : Colour.WHITE;
+        currentTurn = changeTurn(currentTurn);
+
+        updateGameStatus();
+    }
+
+    private Colour changeTurn(Colour colour) {
+         return colour == Colour.WHITE ? Colour.BLACK : Colour.WHITE;
+
+    }
+
+    private void updateGameStatus() {
+        if(isCheck(currentTurn)) {
+            if(!hasAnyLegalMove(currentTurn)) {
+                status = GameStatus.CHECKMATE;
+                System.out.println("CHECKMATE! " + currentTurn + " loses");
+            }
+            else {
+                status = GameStatus.CHECK;
+                System.out.println(currentTurn + " is in CHECK");
+            }
+        }
+        else {
+            if(!hasAnyLegalMove(currentTurn)) {
+                status = GameStatus.STALEMATE;
+                System.out.println("STALEMATE");
+            }
+            else {
+                status = GameStatus.ACTIVE;
+
+            }
+        }
+
+}
+    private boolean isCheck(Colour colour) {
+
+        Cell kingCell = findKing(colour);
+
+        Colour opponent = changeTurn(colour);
+
+        return isSquareUnderAttack(kingCell, opponent);
+    }
+
+    private Cell findKing(Colour colour) {
+        for(int i = 0; i <8; i++){
+            for(int j = 0; j <8; j++){
+                Cell cell = board.getCell(i, j);
+
+                if(cell.isOccupied()) {
+                    Piece piece = cell.getPiece();
+
+                    if(piece.type == PieceType.KING && piece.getColour() == colour) {
+                        return cell;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isSquareUnderAttack(Cell targetCell, Colour attackedColour) {
+        for(int r = 0; r <8; r++){
+            for(int c = 0; c <8; c++) {
+                Cell cell = board.getCell(r, c);
+
+                if(cell.isOccupied() && cell.getPiece().getColour() == attackedColour) {
+                    Move move = new Move(r, c, targetCell.getRow(), targetCell.getCol());
+                    if(cell.getPiece().canMove(board, move)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAnyLegalMove(Colour colour) {
+        for(int r = 0; r <8; r++){
+            for(int c = 0; c <8; c++) {
+                Cell start = board.getCell(r, c);
+
+                if(start.isOccupied() && start.getPiece().getColour() == colour) {
+                    for (int tr = 0; tr < 8; tr++) {
+                        for (int tc = 0; tc < 8; tc++) {
+                            Move move = new Move(r, c, tr, tc);
+                            if(start.getPiece().canMove(board, move)) {
+                                if (!causesCheck(move, colour)) {
+                                    return true;
+                                }
+                            }
+                        }
+
+                    }
+                }
+
+            }
+        }
+        return false;
+    }
+    private boolean causesCheck(Move move, Colour colour) {
+        Cell start = board.getCell(move.fr, move.fc);
+        Cell end = board.getCell(move.tr, move.tc);
+
+        Piece captured = end.getPiece();
+
+        end.setPiece(start.getPiece());
+        start.setPiece(null);
+
+        boolean check = isCheck(colour);
+        start.setPiece(end.getPiece());
+        end.setPiece(captured);
+
+        return check;
     }
 
 }
@@ -246,6 +405,12 @@ class Cell {
     }
     void setPiece(Piece piece) {
         this.piece = piece;
+    }
+    int getRow() {
+        return row;
+    }
+    int getCol() {
+        return col;
     }
 
     Piece getPiece() {
