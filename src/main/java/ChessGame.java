@@ -145,6 +145,8 @@ class Player {
         this.colour = colour;
     }
 }
+
+/* ---------- Game ------------- */
 class Game {
     private final Board board;
     private Colour currentTurn;
@@ -232,9 +234,11 @@ class Game {
         }
 
 }
+
     private boolean isCheck(Colour colour) {
 
         Cell kingCell = findKing(colour);
+        if (kingCell == null) return false;
 
         Colour opponent = changeTurn(colour);
 
@@ -259,12 +263,12 @@ class Game {
         return null;
     }
 
-    private boolean isSquareUnderAttack(Cell targetCell, Colour attackedColour) {
+    private boolean isSquareUnderAttack(Cell targetCell, Colour attackerColour) {
         for(int r = 0; r <8; r++){
             for(int c = 0; c <8; c++) {
                 Cell cell = board.getCell(r, c);
 
-                if(cell.isOccupied() && cell.getPiece().getColour() == attackedColour) {
+                if(cell.isOccupied() && cell.getPiece().getColour() == attackerColour) {
                     Move move = new Move(r, c, targetCell.getRow(), targetCell.getCol());
                     if(cell.getPiece().canMove(board, move)) {
                         return true;
@@ -298,6 +302,7 @@ class Game {
         }
         return false;
     }
+
     private boolean causesCheck(Move move, Colour colour) {
         Cell start = board.getCell(move.fr, move.fc);
         Cell end = board.getCell(move.tr, move.tc);
@@ -316,6 +321,7 @@ class Game {
 
 }
 
+/* -------- Board ---------- */
 class Board {
     private static Board instance; // single obj
     private final Cell[][] cell = new Cell[8][8];
@@ -373,6 +379,7 @@ class Board {
 }
 
 //Factory Pattern - for piece creation
+/* ---------- PieceFactory ------------ */
 class PieceFactory {
     public static Piece createPiece(PieceType type, Colour colour) {
         switch(type) {
@@ -394,6 +401,7 @@ class PieceFactory {
     }
 }
 
+/* ---------- Cell ----------- */
 class Cell {
     private int row;
     private int col;
@@ -426,55 +434,153 @@ interface MoveStrategy {
     boolean isValidMove(Board board, Move move, Colour colour);
 }
 
+/* ---------------- ROOK ---------------- */
+
 class RookStrategy implements MoveStrategy {
-    @Override
-    public boolean isValidMove(Board board, Move move, Colour colour) {
-        return false;
-    }
-//    Rook(Colour colour, ) {
-//        super(colour);
-//    }
 
-//    @Override
-//    boolean isValidMove(Board board, Move move, Colour colour) {
-////        return move.getRow() == end.getRow() || start.getCol() == end.getCol();
-//        return false;
-//    }
-}
-class KnightStrategy implements MoveStrategy {
-    @Override
     public boolean isValidMove(Board board, Move move, Colour colour) {
-        return false;
-    }
 
+        if (move.fr != move.tr && move.fc != move.tc)
+            return false;
+
+        int rowStep = Integer.compare(move.tr, move.fr);
+        int colStep = Integer.compare(move.tc, move.fc);
+
+        int r = move.fr + rowStep;
+        int c = move.fc + colStep;
+
+        while (r != move.tr || c != move.tc) {
+
+            if (board.getCell(r, c).isOccupied())
+                return false;
+
+            r += rowStep;
+            c += colStep;
+        }
+
+        return true;
+    }
 }
+
+/* ---------------- BISHOP ---------------- */
+
 class BishopStrategy implements MoveStrategy {
-    @Override
+
     public boolean isValidMove(Board board, Move move, Colour colour) {
-        return false;
+
+        int rowDiff = Math.abs(move.tr - move.fr);
+        int colDiff = Math.abs(move.tc - move.fc);
+
+        if (rowDiff != colDiff)
+            return false;
+
+        int rowStep = (move.tr > move.fr) ? 1 : -1;
+        int colStep = (move.tc > move.fc) ? 1 : -1;
+
+        int r = move.fr + rowStep;
+        int c = move.fc + colStep;
+
+        while (r != move.tr && c != move.tc) {
+
+            if (board.getCell(r, c).isOccupied())
+                return false;
+
+            r += rowStep;
+            c += colStep;
+        }
+
+        return true;
     }
 }
+
+/* ---------------- QUEEN ---------------- */
+
 class QueenStrategy implements MoveStrategy {
 
-    @Override
     public boolean isValidMove(Board board, Move move, Colour colour) {
-        return false;
+
+        RookStrategy rook = new RookStrategy();
+        BishopStrategy bishop = new BishopStrategy();
+
+        return rook.isValidMove(board, move, colour) ||
+                bishop.isValidMove(board, move, colour);
     }
 }
+
+/* ---------------- KNIGHT ---------------- */
+
+class KnightStrategy implements MoveStrategy {
+
+    public boolean isValidMove(Board board, Move move, Colour colour) {
+
+        int rowDiff = Math.abs(move.tr - move.fr);
+        int colDiff = Math.abs(move.tc - move.fc);
+
+        return (rowDiff == 2 && colDiff == 1) ||
+                (rowDiff == 1 && colDiff == 2);
+    }
+}
+
+/* ---------------- KING ---------------- */
+
 class KingStrategy implements MoveStrategy {
 
-    @Override
     public boolean isValidMove(Board board, Move move, Colour colour) {
-        return false;
+
+        int rowDiff = Math.abs(move.tr - move.fr);
+        int colDiff = Math.abs(move.tc - move.fc);
+
+        return rowDiff <= 1 && colDiff <= 1;
     }
 }
+
+/* ---------------- PAWN ---------------- */
+
 class PawnStrategy implements MoveStrategy {
-    @Override
+
     public boolean isValidMove(Board board, Move move, Colour colour) {
+
+        int direction = (colour == Colour.WHITE) ? -1 : 1;
+
+        int rowDiff = move.tr - move.fr;
+        int colDiff = Math.abs(move.tc - move.fc);
+
+        Cell end = board.getCell(move.tr, move.tc);
+
+        /* Normal move */
+        if (colDiff == 0) {
+
+            if (rowDiff == direction && !end.isOccupied())
+                return true;
+
+            /* First move double step */
+
+            if ((colour == Colour.WHITE && move.fr == 6) ||
+                    (colour == Colour.BLACK && move.fr == 1)) {
+
+                if (rowDiff == 2 * direction &&
+                        !board.getCell(move.fr + direction, move.fc).isOccupied() &&
+                        !end.isOccupied()) {
+                    return true;
+                }
+            }
+        }
+
+        /* Capture move */
+
+        if (colDiff == 1 && rowDiff == direction) {
+
+            if (end.isOccupied() &&
+                    end.getPiece().getColour() != colour) {
+                return true;
+            }
+        }
+
         return false;
     }
 }
 
+/* ------- Piece ---------- */
 abstract class Piece {
     protected Colour colour;
     PieceType type;
@@ -527,6 +633,7 @@ class Pawn extends Piece {
     }
 }
 
+/* ------- Move ---------- */
 class Move{
     int fr;
     int fc;
@@ -541,6 +648,7 @@ class Move{
     }
 }
 
+/* ------- Driver code ---------- */
 public class ChessGame {
     public static void main(String[] args) {
         Player player1 = new Player(Colour.WHITE);
