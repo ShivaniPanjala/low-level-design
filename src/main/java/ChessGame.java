@@ -701,3 +701,31 @@ This follows:
 - Open Closed Principle
 - Single Responsibility Principle
  */
+
+/*
+How would you support AI player?
+
+Add new class:
+
+interface PlayerStrategy {
+    Move chooseMove(Board board);
+}
+
+HumanPlayerStrategy implements PlayerStrategy
+AIPlayerStrategy implements PlayerStrategy
+
+Game calls:
+     currentPlayer.getStrategy().chooseMove(board);
+
+This uses Strategy Pattern again.
+*/
+
+/* How would you support different board sizes?
+
+Right now:
+8x8
+
+Instead:
+Board(int rows, int cols)
+
+*/
